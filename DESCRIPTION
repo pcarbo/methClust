@@ -1,7 +1,8 @@
 Package: methClust
 Type: Package
 Title: Grade of Membership model for modeling CpG methylation patterns across genome.
-Version: 0.1.0
+Version: 0.1.1
+Date: 2023-05-04
 Author: Kushal K Dey <kkdey@uchicago.edu>
 Depends: R (>= 2.10)
 Maintainer: Kushal K Dey <kkdey@uchicago.edu>

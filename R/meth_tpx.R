@@ -79,7 +79,7 @@ meth_tpxfit <- function(meth_X, unmeth_X, freq, tol, verb,
   L <- meth_tpxlpost(meth_X=meth_X, unmeth_X = unmeth_X,
                      freq=freq, omega=omega,
                      admix=admix, grp=grp)
-
+  lpost <- L
   iter <- 1;
   num <- 0
   while( update  && iter < tmax ){
@@ -116,7 +116,7 @@ meth_tpxfit <- function(meth_X, unmeth_X, freq, tol, verb,
       ## joint parameter EM update
       Wfit <- meth_normalizetpx(Wfit + 1e-15, byrow=TRUE);
       move <- meth_tpxEM(meth=as.matrix(meth_X), unmeth = as.matrix(unmeth_X),
-                    freq=freq, omega=Wfit, admix=admix, grp=grp)
+                    freq=freq, omega=Wfit)
       QNup <- move
       QNup$L <-  meth_tpxlpost(meth_X=meth_X, unmeth_X = unmeth_X,
                                freq=move$freq, omega=move$omega,
@@ -130,12 +130,13 @@ meth_tpxfit <- function(meth_X, unmeth_X, freq, tol, verb,
     if(QNup$L < L){  # happens on bad Wfit, so fully reverse
       if(verb > 10){ cat("_reversing a step_") }
       move <- meth_tpxEM(meth=as.matrix(meth_X), unmeth = as.matrix(unmeth_X),
-                         freq=freq, omega=omega, admix=admix, grp=grp)
+                         freq=freq, omega=omega)
       QNup$L <-  meth_tpxlpost(meth_X=meth_X, unmeth_X = unmeth_X,
                                freq=move$freq, omega=move$omega,
                                admix=admix, grp=grp)
     }
 
+    lpost <- c(lpost,QNup$L)
     dif <- (QNup$L-L)
     dif2 <- abs(dif)/(L+0.001)
 
@@ -177,7 +178,7 @@ meth_tpxfit <- function(meth_X, unmeth_X, freq, tol, verb,
     cat("\n")
   }
 
-  out <- list(freq=freq, omega=omega, K=K, L=L, iter=iter)
+  out <- list(freq=freq, omega=omega, K=K, L=L, iter=iter, lpost = lpost)
   invisible(out)
 }
 
@@ -234,12 +235,12 @@ meth_tpxlpost_squarem <- function(param_vec_in,  meth, unmeth,  K,
 meth_tpxsquarEM <- function(param_vec_in, meth, unmeth, K, admix, grp){
   omega_in <- inv.logit(matrix(param_vec_in[1:(nrow(meth)*K)], nrow=nrow(meth), ncol=K));
   freq_in <- inv.logit(matrix(param_vec_in[-(1:(nrow(meth)*K))], nrow=ncol(meth), ncol=K))
-  out <- meth_tpxEM(meth, unmeth, freq_in, omega_in, admix, grp);
+  out <- meth_tpxEM(meth, unmeth, freq_in, omega_in);
   param_vec_out <- c(as.vector(logit(out$omega)),as.vector(logit(out$freq)))
   return(param_vec_out)
 }
 
-meth_tpxEM <- function(meth, unmeth, freq_in, omega_in, admix, grp)
+meth_tpxEM <- function(meth, unmeth, freq_in, omega_in, alpha = 1)
 {
   n <- nrow(omega_in)
   p <- nrow(freq_in)
@@ -259,7 +260,7 @@ meth_tpxEM <- function(meth, unmeth, freq_in, omega_in, admix, grp)
   u_temp <- (unmeth/u_lambda)
   u_matrix <- (u_temp %*% (1 - freq_in)) * omega_in
 
-  omega_out <- meth_normalizetpx(m_matrix + u_matrix + (1/(n*K)), byrow=TRUE)
+  omega_out <- meth_normalizetpx(m_matrix + u_matrix + alpha*(1/(n*K)), byrow=TRUE)
 
   m_t_matrix <- (t(m_temp) %*% omega_in)*freq_in
   u_t_matrix <- (t(u_temp) %*% omega_in)*(1-freq_in)
